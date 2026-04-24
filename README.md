@@ -47,6 +47,13 @@ Networking is set up through TAP using a bridge device to the host. It is your r
 create and manage said bridge device. A special TAP interface (named vax.<system>) is created and
 added to the specified bridge.
 
+Keep Ini File
+-------------
+
+If you want to use your own INI file, or keep the INI file untouched after the
+first generation, specify `KEEP_INI=YES` in the environment. This will only
+generate an INI file if there isn't currently one existing.
+
 Caution
 =======
 
