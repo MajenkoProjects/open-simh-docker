@@ -8,6 +8,8 @@ variables in the docker compose configuration file.
 
 Sample configuration:
 
+### Vax:
+
 ```yaml
 services:
   vax:
@@ -34,6 +36,35 @@ services:
       - NET=DEQNA
       - MEM=64M
       - IDLE=VMS
+```
+
+### PDP-11:
+
+```yaml
+services:
+  pdp11:
+    image: majenko/open-simh-pdp11:latest
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - type: bind
+        source: /tank/machine/Kevin
+        target: /machine
+      - type: bind
+        source: /dev/net
+        target: /dev/net
+    environment:
+      - SYSTEM=Kevin
+      - CPU=11/23+
+      - BRIDGE=dn0
+      - CONSOLE=3010
+      - RL0=RL02
+      - RL1=RL02
+      - NET=DEQNA
+      - MEM=4M
+      - BOOT=rl0
 ```
 
 The main things to configure are the location for storing configuration and disk images (best to
