@@ -1,7 +1,9 @@
 #!/bin/bash
 
-echo "I AM PID $$"
+INI=/machine/simh.ini
+cd /machine
 
+# This should be called when the system is told to terminate.
 function do_shutdown() 
 {
 	PID=$(pidof /bin/vax)
@@ -12,15 +14,57 @@ function do_shutdown()
 	ip tap del mode tap dev ${IFNAME}
 }
 
+# Add a new block of device entries and connect them
+function add_device()
+{
+	PREFIX=$1
+	COUNT=$2
+
+	RQE=N
+
+	for ID in $(seq 0 $(($COUNT - 1))); do
+		RQ=${PREFIX}${ID}
+		if [ "x${!RQ}" != "x" ]; then
+			if [ "x${RQE}" == "xN" ]; then
+				echo "SET ${PREFIX} ENA" >> ${INI}
+				RQE=Y
+			fi
+
+			echo "${PREFIX}${ID} ${!RQ}" >> ${INI}
+
+			if [ "x${!RQ}" != "xCDROM" ]; then
+				echo "ATT ${PREFIX}${ID} /machine/${PREFIX}${ID}.${!RQ}" >> ${INI}
+			fi
+		else
+			if [ "x${RQE}" == "xY" ]; then
+				echo "${PREFIX}${ID} DIS" >> ${INI}
+			fi
+		fi
+	done
+
+	if [ "x${RQE}" == "xN" ]; then
+		echo "SET ${PREFIX} DIS" >> ${INI}
+	fi
+}
+
+K=N
+if [ "x${KEEP_INI}" == "xYES" ]; then
+	if [ -f ${INI} ]; then
+		echo "Keeping existing ini file."
+		K=Y
+	fi
+fi
+
 trap 'kill ${!}; do_shutdown' SIGINT
 trap 'kill ${!}; do_shutdown' SIGKILL
 trap 'kill ${!}; do_shutdown' SIGQUIT
 
-IFNAME=vax.`echo ${SYSTEM} | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]'`
 export IFNAME
 
 EXPNAME="      ${SYSTEM}"
 EXPNAME=F${EXPNAME: -5}
+
+IFNAME=vax.`echo ${SYSTEM} | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]'`
 
 MAC=`echo -n "${EXPNAME}" | hexdump -e '2/1 ":%02x"' | cut -c 2-`
 export MAC
@@ -34,84 +78,46 @@ ip tap add mode tap dev ${IFNAME}
 ip link set dev ${IFNAME} up
 brctl addif ${BRIDGE} ${IFNAME}
 
-cd /machine
 
-INI=/machine/simh.ini
+if [ "x${K}" == "xN" ]; then
+	echo "Generating fresh ini file"
+	rm -f ${INI}
 
-rm -f ${INI}
+	echo "SET QUIET" >> ${INI}
+	echo "SET CONSOLE TELNET=${CONSOLE}" >> ${INI}
+	echo "SET CONSOLE TELNET=BUFFERED=32768" >> ${INI}
+	echo "SET CPU ${MEM}" >> ${INI}
+	echo "SET CPU IDLE=${IDLE}" >> ${INI}
+	echo "SET CPU CONHALT" >> ${INI}
+	echo "SET CPU AUTOBOOT" >> ${INI}
+	echo "ATT NVR /machine/nvr.bin" >> ${INI}
+	echo "SET LPT DIS" >> ${INI}
+	echo "SET DZ DIS" >> ${INI}
+	echo "SET TS DIS" >> ${INI}
 
-echo "SET QUIET" >> ${INI}
-echo "set console telnet=${CONSOLE}" >> ${INI}
-echo "set console telnet=buffered=32768" >> ${INI}
-echo "SET CPU ${MEM}" >> ${INI}
-echo "SET CPU IDLE=${IDLE}" >> ${INI}
-echo "SET CPU CONHALT" >> ${INI}
-echo "SET CPU AUTOBOOT" >> ${INI}
-echo "ATT NVR nvr.bin" >> ${INI}
-echo "SET LPT DIS" >> ${INI}
-echo "SET RL DIS" >> ${INI}
-echo "SET TS DIS" >> ${INI}
+	add_device RL 4 
+	add_device RQ 4 
+	add_device RQB 4 
+	add_device RQC 4 
+	add_device RQD 4 
+	add_device TQ 4
 
-RQE=N
 
-for ID in {0..3}; do
-	RQ=RQ${ID}
-	if [ "x${!RQ}" != "x" ]; then
-		if [ "x${RQE}" == "xN" ]; then
-			echo "SET RQ ENA" >> ${INI}
-			RQE=Y
-		fi
-
-		echo "RQ${ID} ${!RQ}" >> ${INI}
-
-		if [ "x${!RQ}" != "xCDROM" ]; then
-			echo "ATT RQ${ID} /machine/RQ${ID}.${!RQ}" >> ${INI}
-		fi
+	if [ "x$NET" != "x" ]; then
+		echo "SET XQ ENA" >> ${INI}
+		echo "SET XQ MAC=${MAC}" >> ${INI}
+		echo "SET XQ TYPE=${NET}" >> ${INI}
+		echo "ATT XQ tap:${IFNAME}" >> ${INI}
 	else
-		echo "RQ${ID} DIS" >> ${INI}
-	fi
-done
+		echo "SET XQ DIS" >> ${INI}
+	fi 
 
-if [ "x${RQE}" == "xN" ]; then
-	echo "SET RQ DIS" >> ${INI}
+	echo 'EXPECT "PLEASE ENTER DATE AND TIME (DD-MMM-YYYY  HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
+	echo 'EXPECT "Please enter the date and time (DD-MMM-YYYY HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
+	echo 'EXPECT ">>>" SEND "boot dua0\r"; CONTINUE' >> ${INI}
+	echo "BOOT" >> ${INI}
+	echo "QUIT" >> ${INI}
 fi
-
-for ID in {0..3}; do
-	TQ=TQ${ID}
-	if [ "x${!TQ}" != "x" ]; then
-		if [ "x${TQE}" == "xN" ]; then
-			echo "SET TQ ENA" >> ${INI}
-			TQE=Y
-		fi
-
-		echo "TQ${ID} ${!TQ}" >> ${INI}
-
-		if [ "x${!TQ}" != "xCDROM" ]; then
-			echo "ATT TQ${ID} /machine/TQ${ID}.${!TQ}" >> ${INI}
-		fi
-	else
-		echo "TQ${ID} DIS" >> ${INI}
-	fi
-done
-
-if [ "x${TQE}" == "xN" ]; then
-	echo "SET TQ DIS" >> ${INI}
-fi
-
-if [ "x$NET" != "x" ]; then
-	echo "SET XQ ENA" >> ${INI}
-	echo "SET XQ MAC=${MAC}" >> ${INI}
-	echo "SET XQ TYPE=${NET}" >> ${INI}
-	echo "ATT XQ tap:${IFNAME}" >> ${INI}
-else
-	echo "SET XQ DIS" >> ${INI}
-fi 
-
-echo 'EXPECT "PLEASE ENTER DATE AND TIME (DD-MMM-YYYY  HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
-echo 'EXPECT "Please enter the date and time (DD-MMM-YYYY HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
-echo 'EXPECT ">>>" SEND "boot dua0\r"; CONTINUE' >> ${INI}
-echo "BOOT" >> ${INI}
-echo "QUIT" >> ${INI}
 
 
 tmux start-server
