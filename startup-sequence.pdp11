@@ -30,14 +30,14 @@ function add_device()
 				RQE=Y
 			fi
 
-			echo "${PREFIX}${ID} ${!RQ}" >> ${INI}
+			echo "SET ${PREFIX}${ID} ${!RQ}" >> ${INI}
 
 			if [ "x${!RQ}" != "xCDROM" ]; then
-				echo "ATT ${PREFIX}${ID} /machine/${PREFIX}${ID}.${!RQ}" >> ${INI}
+				echo "ATT -Y ${PREFIX}${ID} /machine/${PREFIX}${ID}.${!RQ}" >> ${INI}
 			fi
 		else
 			if [ "x${RQE}" == "xY" ]; then
-				echo "${PREFIX}${ID} DIS" >> ${INI}
+				echo "SET ${PREFIX}${ID} DIS" >> ${INI}
 			fi
 		fi
 	done
@@ -86,13 +86,10 @@ if [ "x${K}" == "xN" ]; then
 	echo "SET QUIET" >> ${INI}
 	echo "SET CONSOLE TELNET=${CONSOLE}" >> ${INI}
 	echo "SET CONSOLE TELNET=BUFFERED=32768" >> ${INI}
+	echo "SET CPU ${CPU}" >> ${INI}
 	echo "SET CPU ${MEM}" >> ${INI}
-	echo "SET CPU IDLE=${IDLE}" >> ${INI}
-	echo "SET CPU CONHALT" >> ${INI}
-	echo "SET CPU AUTOBOOT" >> ${INI}
-	echo "ATT NVR /machine/nvr.bin" >> ${INI}
+	echo "SET CPU IDLE" >> ${INI}
 	echo "SET LPT DIS" >> ${INI}
-	echo "SET DZ DIS" >> ${INI}
 	echo "SET TS DIS" >> ${INI}
 
 	add_device RK 8
@@ -120,7 +117,7 @@ if [ "x${K}" == "xN" ]; then
 	echo 'EXPECT "PLEASE ENTER DATE AND TIME (DD-MMM-YYYY  HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
 	echo 'EXPECT "Please enter the date and time (DD-MMM-YYYY HH:MM)" SEND "%DATE_DD%-%DATE_MMM%-%DATE_YYYY% %TIME_HH%:%TIME_MM%\r"; CONTINUE' >> ${INI}
 	echo 'EXPECT ">>>" SEND "boot dua0\r"; CONTINUE' >> ${INI}
-	echo "BOOT" >> ${INI}
+	echo "BOOT ${BOOT}" >> ${INI}
 	echo "QUIT" >> ${INI}
 fi
 

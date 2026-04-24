@@ -30,7 +30,7 @@ function add_device()
 				RQE=Y
 			fi
 
-			echo "${PREFIX}${ID} ${!RQ}" >> ${INI}
+			echo "SET ${PREFIX}${ID} ${!RQ}" >> ${INI}
 
 			if [ "x${!RQ}" != "xCDROM" ]; then
 				echo "ATT ${PREFIX}${ID} /machine/${PREFIX}${ID}.${!RQ}" >> ${INI}
