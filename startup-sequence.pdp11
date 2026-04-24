@@ -1,0 +1,44 @@
+#!/bin/bash
+
+echo "I AM PID $$"
+
+function do_shutdown() 
+{
+	PID=$(pidof /bin/pdp11)
+	echo "Killing $PID"
+	kill -9 ${PID}
+	sleep 1
+	brctl delif ${BRIDGE} ${IFNAME}
+	ip tap del mode tap dev ${IFNAME}
+}
+
+trap 'kill ${!}; do_shutdown' SIGINT
+trap 'kill ${!}; do_shutdown' SIGKILL
+trap 'kill ${!}; do_shutdown' SIGQUIT
+
+IFNAME=pdp11.`echo ${SYSTEM} | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]'`
+export IFNAME
+
+EXPNAME="      ${SYSTEM}"
+EXPNAME=F${EXPNAME: -5}
+
+MAC=`echo -n "${EXPNAME}" | hexdump -e '2/1 ":%02x"' | cut -c 2-`
+export MAC
+
+echo "System name:    ${SYSTEM}"
+echo "Network bridge: ${BRIDGE}"
+echo "MAC Address:    ${MAC}"
+echo "Interface:      ${IFNAME}"
+
+ip tap add mode tap dev ${IFNAME}
+ip link set dev ${IFNAME} up
+brctl addif ${BRIDGE} ${IFNAME}
+
+cd /machine
+tmux start-server
+tmux new-session -P -s open-simh-pdp11 -c /machine -d /bin/pdp11
+
+while pidof -q /bin/pdp11; do
+	tail -f /dev/null & wait ${!}
+done
+

@@ -1,0 +1,18 @@
+FROM debian:latest AS base
+
+RUN apt-get update && apt-get install -y build-essential git tmux sysvinit-utils iproute2 bridge-utils bsdextrautils
+RUN echo "Building SIMH." && \
+	mkdir /work && \
+	cd /work && \
+	git clone --depth 1 https://github.com/open-simh/simh && \
+	cd /work/simh && \
+	make BIN/vax && \
+	cp BIN/vax /bin && \
+	rm -rf /work
+
+COPY startup-sequence.vax /etc/startup-sequence
+
+HEALTHCHECK --interval=10s \
+	CMD pidof -q /bin/vax
+
+ENTRYPOINT ["/etc/startup-sequence"]

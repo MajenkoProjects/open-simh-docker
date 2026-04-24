@@ -1,0 +1,31 @@
+services:
+  vax:
+    build: 
+      dockerfile: Dockerfile.vax
+    image: majenko/open-simh-vax
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - type: bind
+        source: /tank/machine/ace
+        target: /machine
+      - type: bind
+        source: /dev/net
+        target: /dev/net
+  pdp11:
+    build: 
+      dockerfile: Dockerfile.pdp11
+    image: majenko/open-simh-pdp11
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    volumes:
+      - type: bind
+        source: /tank/machine/ace
+        target: /machine
+      - type: bind
+        source: /dev/net
+        target: /dev/net
